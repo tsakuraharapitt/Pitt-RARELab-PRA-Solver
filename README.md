@@ -28,7 +28,7 @@ pip install -r requirements.txt
 ## Usage
 ### Run the Program:
 ```
-python pra_scenario_analyzer.py
+python RARE-PRASolver-v0.1.py
 ```
 ### Provide Input: 
 When running the program, the following prompt will be displayed. Then, enter the path/name of an XML input file (e.g., sample_input.xml):
