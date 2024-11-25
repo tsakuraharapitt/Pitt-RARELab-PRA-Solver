@@ -1,0 +1,26 @@
+<PRAModel>
+    <Scenarios>
+        <Scenario name="S1" Outcome="success">IE*NOT_HPI</Scenario>
+        <Scenario name="S2" Outcome="success">IE*HPI*NOT_DEP*NOT_LPI</Scenario>
+        <Scenario name="S3" Outcome="core damage">IE*HPI*NOT_DEP*LPI</Scenario>
+        <Scenario name="S4" Outcome="core damage">IE*HPI*DEP</Scenario>
+    </Scenarios>
+    <InitiatingEvent>
+        <Probability>0.001</Probability>
+    </InitiatingEvent>
+    <TopEvents>
+        <Event name="HPI">(T + HPA + DGA) * (T + HPB + DGB)</Event>
+        <Event name="DEP">DEP</Event>
+        <Event name="LPI">(T + LPA + DGA) * (T + LPB + DGB)</Event>
+    </TopEvents>
+    <Probabilities>
+        <BasicEvent name="HPA">0.01</BasicEvent>
+        <BasicEvent name="HPB">0.01</BasicEvent>
+        <BasicEvent name="DGA">0.03</BasicEvent>
+        <BasicEvent name="DGB">0.03</BasicEvent>
+        <BasicEvent name="T">1E-5</BasicEvent>
+        <BasicEvent name="LPA">0.005</BasicEvent>
+        <BasicEvent name="LPB">0.005</BasicEvent>
+        <BasicEvent name="DEP">0.10</BasicEvent>
+    </Probabilities>
+</PRAModel>
