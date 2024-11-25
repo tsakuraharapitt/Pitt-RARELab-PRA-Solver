@@ -24,6 +24,7 @@ cd RARELab-PRA-Solver
 ```
 Alternatively, you can download the repository as a ZIP file from GitHub and extract it.
 ### 2. Install Dependencies:
+Run the following command in the terminal or Command Prompt to install the required library:
 ```
 pip install -r requirements.txt
 ```
