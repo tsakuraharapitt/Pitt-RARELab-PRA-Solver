@@ -2,7 +2,7 @@
 
 ## Overview
 The RARE Lab PRA Solver quantifies a PRA model consisting of an event tree and fault trees. It provides detailed output in XML format.
-If you find any issues with the program, please post them on the [ISSUES](ISSUES) page. 
+If you find any issues with the program, please post them on the [ISSUES](https://github.com/tsakuraharapitt/Pitt-RARELab-PRA-Solver/issues) page. 
 
 ## Disclaimer
 This software is a **preliminary beta version** and has not been verified or validated. This tool is provided for **educational purposes only**.
