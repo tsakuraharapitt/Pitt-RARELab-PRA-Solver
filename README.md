@@ -1,7 +1,7 @@
 # RARE Lab PRA Solver (Beta)
 
 ## Overview
-The RARE Lab PRA Solver quantifies a PRA model consisting of an event tree and fault trees. It provides detailed output in XML format.
+The RARE Lab PRA Solver quantifies a PRA model consisting of an event tree and fault trees. It provides outputs in XML format.
 
 If you find any issues with the program, please post them on the [ISSUES](https://github.com/tsakuraharapitt/Pitt-RARELab-PRA-Solver/issues) page. Any comments and feedback are crucial for gradual refinements of the program and would be greatly appreciated!
 
@@ -9,6 +9,7 @@ If you find any issues with the program, please post them on the [ISSUES](https:
 This software is a **preliminary beta version** and has not been verified or validated. This tool is provided for **educational purposes only**.
 - **Do not** rely on this tool for real-world or safety-critical decision-making.  
 - Use the results with caution, as the code may contain errors or limitations.
+  - If you notice any errors, please post them on the [ISSUES](https://github.com/tsakuraharapitt/Pitt-RARELab-PRA-Solver/issues) page. 
 
 ## Requirements
 - **Python version**: 3.6 or later
@@ -49,31 +50,32 @@ Here’s an example of an XML input file:
 ```
 <PRAModel>
     <Scenarios>
-        <Scenario name="S1" Outcome="major failure">IE*A</Scenario>
-        <Scenario name="S2" Outcome="minor failure">IE*_A*B</Scenario>
-        <Scenario name="S3" Outcome="minor failure">IE*_A*_B*C</Scenario>
-        <Scenario name="S4" Outcome="success">IE*_A*_B*_C</Scenario>
+        <Scenario name="S1" Outcome="success">IE*NOT_HPI</Scenario>
+        <Scenario name="S2" Outcome="success">IE*HPI*NOT_DEP*NOT_LPI</Scenario>
+        <Scenario name="S3" Outcome="core damage">IE*HPI*NOT_DEP*LPI</Scenario>
+        <Scenario name="S4" Outcome="core damage">IE*HPI*DEP</Scenario>
     </Scenarios>
     <InitiatingEvent>
-        <Probability>0.05</Probability>
+        <Probability>0.001</Probability>
     </InitiatingEvent>
     <TopEvents>
-        <Event name="A">a*b + c*d</Event>
-        <Event name="B">a*e + c*f</Event>
-        <Event name="C">a*g</Event>
+        <Event name="HPI">(T + HPA + DGA) * (T + HPB + DGB)</Event>
+        <Event name="DEP">DEP</Event>
+        <Event name="LPI">(T + LPA + DGA) * (T + LPB + DGB)</Event>
     </TopEvents>
     <Probabilities>
-        <BasicEvent name="a">0.1</BasicEvent>
-        <BasicEvent name="b">0.1</BasicEvent>
-        <BasicEvent name="c">0.1</BasicEvent>
-        <BasicEvent name="d">0.1</BasicEvent>
-        <BasicEvent name="e">0.1</BasicEvent>
-        <BasicEvent name="f">0.1</BasicEvent>
-        <BasicEvent name="g">0.05</BasicEvent>
+        <BasicEvent name="HPA">0.01</BasicEvent>
+        <BasicEvent name="HPB">0.01</BasicEvent>
+        <BasicEvent name="DGA">0.03</BasicEvent>
+        <BasicEvent name="DGB">0.03</BasicEvent>
+        <BasicEvent name="T">1E-5</BasicEvent>
+        <BasicEvent name="LPA">0.005</BasicEvent>
+        <BasicEvent name="LPB">0.005</BasicEvent>
+        <BasicEvent name="DEP">0.10</BasicEvent>
     </Probabilities>
 </PRAModel>
 ```
-Here, the underscore ("_") before each event represents a complement of each event. For instance, "_A" represents "not A" in Boolean logic. 
+Here, "NOT_" before each event represents a complement of each event. For instance, "NOT_A" represents "A=False" in Boolean logic. 
 ### Example Output
 The program produces an XML output file, for example:
 ```
@@ -104,4 +106,4 @@ The program produces an XML output file, for example:
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 ## Acknowledgment
-This tool is being developed as part of an educational initiative at the University of Pittsburgh to advance risk analysis and reliability engineering. The goal is to equip the next generation of engineers with critical skills in risk and reliability assessment.
+This tool is being developed as part of an initiative led by the RARE Lab at the University of Pittsburgh to advance risk analysis and reliability engineering education. The goal is to equip the next generation of engineers with critical skills in risk and reliability assessment.
