@@ -12,10 +12,11 @@ Version: 0.1 (Beta)
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from sympy import symbols, Not, simplify_logic, And, Or
+from sympy import symbols, Not, Or, And, simplify_logic, to_dnf
 from itertools import combinations
 import os
 from collections import defaultdict
+import re
 
 def print_disclaimer():
     """Print a disclaimer about the tool's limitations."""
@@ -33,7 +34,7 @@ def print_disclaimer():
     
     Author: RARE Lab at Pitt
     Version: 0.1 (Beta)
-    Release Date: 11/30/2024
+    Release Date: 11/25/2024
     ========================================================
     """
     print(disclaimer)
@@ -71,28 +72,93 @@ def parse_xml(file_path):
     return scenarios, top_events, probabilities
 
 def create_boolean_expression(logic, symbols_dict):
-    """Convert a string logic expression to a Sympy Boolean expression."""
-    # Replace underscores (_) with Not notation for complements
-    for event in symbols_dict.keys():
-        logic = logic.replace(f"_{event}", f"Not({event})")
-    # Replace operators with Sympy syntax
-    logic = logic.replace("*", " & ").replace("+", " | ")
-    return eval(logic, {**symbols_dict, "And": And, "Or": Or, "Not": Not})
+    """Convert a string logic expression to a SymPy Boolean expression."""
+    # Tokenize the string into components: complements, variables, operators, and parentheses
+    tokens = re.split(r'(\W)', logic)  # Split by non-word characters while preserving operators
 
-def compute_probability(cut_set, probabilities):
-    """Compute the probability of a single minimal cut set."""
-    p = 1.0
-    if cut_set.func == And:  # Handle conjunctions (AND)
-        for term in cut_set.args:
-            if isinstance(term, Not):  # Handle complement events
-                p *= 1 - probabilities[str(term.args[0])]
+    # Translate the tokens into SymPy format
+    translated_tokens = []
+    for token in tokens:
+        token = token.strip()
+        if not token:  # Ignore empty tokens
+            continue
+        
+        # Handle complement with "NOT_" prefix (e.g., "NOT_HPI" -> "Not(HPI)")
+        if token.startswith("NOT_"):
+            event_name = token[4:]
+            if event_name in symbols_dict:
+                translated_tokens.append(f"Not({symbols_dict[event_name]})")
             else:
-                p *= probabilities[str(term)]
-    elif cut_set.func == Not:  # Handle single NOT event
-        p = 1 - probabilities[str(cut_set.args[0])]
-    else:  # Handle single event
-        p = probabilities[str(cut_set)]
-    return p
+                raise KeyError(f"Complement event '{event_name}' not found in symbols dictionary.")
+
+        # Handle regular event (e.g., "HPI")
+        elif token.isalnum():
+            if token in symbols_dict:
+                translated_tokens.append(f"{symbols_dict[token]}")
+            else:
+                raise KeyError(f"Event '{token}' not found in symbols dictionary.")
+
+        # Handle operators (* for AND, + for OR)
+        elif token == "*":
+            translated_tokens.append("&")
+        elif token == "+":
+            translated_tokens.append("|")
+
+        # Handle parentheses
+        elif token == "(" or token == ")":
+            translated_tokens.append(token)
+
+        # Handle other unexpected symbols
+        else:
+            raise ValueError(f"Unexpected token '{token}' in logic expression.")
+
+    # Join the translated tokens into a valid SymPy expression
+    translated_logic = " ".join(translated_tokens)
+
+    # Evaluate the expression using SymPy's And, Or, and Not operators
+    return eval(translated_logic, {"And": And, "Or": Or, "Not": Not, **symbols_dict})
+
+
+def compute_probability(expression, probabilities):
+    """Compute the probability of a given Boolean expression involving minimal cut sets."""
+
+    if expression.is_Atom:  # Base case: single event, return its probability
+        event_name = str(expression)
+        if event_name in probabilities:
+            return probabilities[event_name]
+        else:
+            raise KeyError(f"Event '{event_name}' not found in probabilities dictionary.")
+    
+    if expression.func == And:  # Handle conjunctions (AND)
+        p = 1.0
+        for term in expression.args:
+            p *= compute_probability(term, probabilities)
+        return p
+
+    elif expression.func == Or:  # Handle disjunctions (OR)
+        # Use inclusion-exclusion principle for OR probability calculation
+        total_probability = 0.0
+        terms = list(expression.args)
+        n = len(terms)
+        
+        # Apply the inclusion-exclusion principle for the disjunction of events
+        for r in range(1, n + 1):
+            for subset in combinations(terms, r):
+                subset_intersection = And(*subset)
+                subset_prob = compute_probability(subset_intersection, probabilities)
+                if r % 2 == 1:  # Add for odd-sized subsets
+                    total_probability += subset_prob
+                else:  # Subtract for even-sized subsets
+                    total_probability -= subset_prob
+        return total_probability
+
+    elif isinstance(expression, Not):  # Handle complement (NOT)
+        event_name = str(expression.args[0])
+        return 1 - compute_probability(expression.args[0], probabilities)
+
+    else:
+        raise ValueError(f"Unexpected expression type: {expression}")
+
 
 def compute_union_probability(minimal_cut_sets, probabilities):
     """Calculate the exact probability using inclusion-exclusion principle."""
@@ -149,11 +215,20 @@ def save_results_to_xml(input_file, results, outcome_totals):
     
     print(f"Results saved to: {output_file}")
 
-def main():
-    
-    # Print disclaimer
-    print_disclaimer()
+def fully_reduce_cut_sets(expression):
+    """
+    Fully reduce the Boolean expression to ensure minimal cut sets.
+    Convert the expression to Disjunctive Normal Form (DNF) and simplify.
+    """
+    # Convert to Disjunctive Normal Form (DNF), allowing it for larger expressions
+    dnf_expression = to_dnf(expression, simplify=True, force=True)
 
+    # Use simplify_logic to further reduce the expression
+    minimized_expression = simplify_logic(dnf_expression, form='dnf')
+
+    return minimized_expression
+
+def main():
     # Prompt user for the input file path
     file_path = input("Please enter the path to the XML input file: ").strip()
     
@@ -172,7 +247,7 @@ def main():
     top_event_symbols = {name: symbols(name) for name in top_events.keys()}
     
     # Create Boolean expressions for top events
-    top_event_expressions = {name: create_boolean_expression(logic, basic_events) for name, logic in top_events.items()}
+    top_event_expressions = {name: create_boolean_expression(logic, {**basic_events, **top_event_symbols}) for name, logic in top_events.items()}
     
     # Compute probabilities for each scenario
     results = []
@@ -181,14 +256,15 @@ def main():
         # Parse the scenario of interest
         scenario_expression = create_boolean_expression(logic, {**basic_events, **top_event_symbols, **top_event_expressions})
         
-        # Simplify to minimal cut sets
+        # Simplify to minimal cut sets using DNF and further reduction
         minimal_cut_sets = simplify_logic(scenario_expression, form='dnf')
+        fully_reduced_cut_sets = fully_reduce_cut_sets(minimal_cut_sets)
         
         # Compute the probability
-        exact_probability = compute_union_probability(minimal_cut_sets, probabilities)
+        exact_probability = compute_union_probability(fully_reduced_cut_sets, probabilities)
         
         # Store the results
-        results.append((name, outcome, minimal_cut_sets, exact_probability))
+        results.append((name, outcome, fully_reduced_cut_sets, exact_probability))
         outcome_totals[outcome] += exact_probability
     
     # Save results to an XML file
